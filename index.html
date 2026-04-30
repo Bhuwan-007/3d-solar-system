@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stellar Journey — 3D Universe Simulator</title>
+    <meta name="description" content="Explore the solar system in stunning 3D. Click planets to see detailed facts, moons, and atmospheric phenomena.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    
+    <!-- Custom Cursor -->
+    <div id="cursor-dot"></div>
+    <div id="cursor-ring"></div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Scroll & UI -->
+    <div id="scroll-container">
+      <!-- Sections injected by UIManager -->
+    </div>
+
+    <!-- Planet Data Dashboard (shown when focused) -->
+    <div id="planet-dashboard"></div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots"></div>
+    <div id="focus-hint" class="opacity-0">Click background to Unfocus</div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

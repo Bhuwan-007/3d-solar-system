@@ -1,0 +1,349 @@
+export const solarSystemData = [
+  {
+      id: 'sun',
+      name: 'The Sun',
+      kicker: 'System Core',
+      description: 'A massive, glowing sphere of hot plasma holding the system together. Initiating telemetry sequence...',
+      uiColor: 'yellow',
+      r: 8, dist: 0, orbit: 0, rot: 1/25,
+      atmosphere: 0xffaa00,
+      dayLength: '~25 Earth days (equator)',
+      yearLength: '—',
+      facts: [
+        'The Sun contains 99.86% of all mass in the Solar System.',
+        'Light from the Sun takes 8 minutes and 20 seconds to reach Earth.',
+        'The core temperature reaches 15 million °C — hot enough to fuse hydrogen into helium.',
+        'Every second, the Sun converts 4 million tonnes of matter into pure energy.',
+        'The Sun\'s magnetic field flips polarity every ~11 years, causing solar maximums.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 1.5 - time * 0.15);
+              float n2 = fbm(vWorldPosition * 4.0 + time * 0.1);
+              vec3 base = mix(vec3(0.8, 0.2, 0.0), vec3(1.0, 0.5, 0.0), smoothstep(0.3, 0.7, n));
+              vec3 color = mix(base, vec3(1.0, 0.9, 0.5), smoothstep(0.6, 0.9, n2));
+              vec3 extra = vec3(1.0, 0.8, 0.2) * interaction * fbm(vWorldPosition * 5.0 + time);
+              float edge = 1.0 - max(dot(vWorldNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+              extra += vec3(1.0, 0.6, 0.1) * pow(edge, 3.0);
+              color = color * 1.5;
+          `
+      }
+  },
+  {
+      id: 'mercury',
+      name: 'Mercury',
+      kicker: 'Planet 01',
+      description: 'The smallest and fastest planet, whipping around the Sun every 88 Earth days. Its cratered surface resembles our Moon.',
+      uiColor: 'gray',
+      r: 0.5, dist: 16, orbit: 1/88, rot: 1/58,
+      atmosphere: 0x666666,
+      dayLength: '58.6 Earth days',
+      yearLength: '88 Earth days',
+      facts: [
+        'A single day on Mercury (sunrise to sunrise) lasts 176 Earth days — longer than its year.',
+        'Mercury has no atmosphere, so the sky is always black even during daytime.',
+        'Surface temperatures swing from −180°C at night to 430°C during the day.',
+        'Despite being closest to the Sun, it is NOT the hottest planet — Venus is.',
+        'Mercury has a massive iron core that makes up 75% of the planet\'s radius.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 6.0);
+              float craters = fbm(vWorldPosition * 20.0);
+              vec3 color = mix(vec3(0.35, 0.33, 0.30), vec3(0.55, 0.52, 0.48), smoothstep(0.3, 0.7, n));
+              color = mix(color, vec3(0.2, 0.18, 0.15), smoothstep(0.55, 0.85, craters) * 0.7);
+              float thermal = fbm(vWorldPosition * 8.0 + time * 0.5) * interaction;
+              vec3 extra = vec3(0.8, 0.3, 0.0) * thermal * 0.6;
+          `
+      }
+  },
+  {
+      id: 'venus',
+      name: 'Venus',
+      kicker: 'Planet 02',
+      description: 'A runaway greenhouse effect makes this the hottest planet. It spins backward, and very slowly.',
+      uiColor: 'orange',
+      r: 1.2, dist: 24, orbit: 1/225, rot: 1/243,
+      atmosphere: 0xffaa55,
+      dayLength: '243 Earth days (retrograde)',
+      yearLength: '225 Earth days',
+      facts: [
+        'Venus rotates backward — the Sun rises in the west and sets in the east.',
+        'Its surface pressure is 90× Earth\'s — like being 900m underwater.',
+        'Venus\'s thick CO₂ atmosphere traps heat so well it reaches 465°C — hot enough to melt lead.',
+        'It rains sulfuric acid on Venus, but the drops evaporate before reaching the surface.',
+        'A day on Venus is longer than its year.',
+      ],
+      shader: {
+          fragmentCore: `
+              float t = time * 0.1 + (interaction * time * 0.8);
+              float n = fbm(vWorldPosition * 3.0 + vec3(t, t*0.5, 0.0));
+              vec3 color = mix(vec3(0.6, 0.4, 0.2), vec3(0.9, 0.8, 0.5), smoothstep(0.2, 0.8, n));
+              // Active state: roiling toxic clouds accelerate
+              float storm = fbm(vWorldPosition * 6.0 + time * (0.3 + interaction * 3.0));
+              vec3 extra = vec3(0.8, 0.5, 0.1) * storm * interaction * 1.2;
+          `
+      }
+  },
+  {
+      id: 'earth',
+      name: 'Earth',
+      kicker: 'Planet 03',
+      description: 'Our home. Notice the city lights blooming on the dark side of the terminator line. Escorted by Luna.',
+      uiColor: 'blue',
+      r: 1.5, dist: 34, orbit: 1/365, rot: 1, maxMoonDist: 3.2,
+      atmosphere: 0x4488ff, clouds: true,
+      dayLength: '24 hours',
+      yearLength: '365.25 days',
+      moons: [
+        { name: 'Moon (Luna)', r: 0.3, dist: 3.2, speed: 2.5, color: 0xcccccc }
+      ],
+      facts: [
+        'Earth is the only known planet with liquid water on its surface and active plate tectonics.',
+        '71% of the surface is water — yet 95% of the oceans remain unexplored.',
+        'Earth\'s magnetic field, generated by its molten iron core, shields us from solar radiation.',
+        'The Moon is slowly drifting away at 3.8 cm per year.',
+        'A day was only 6 hours long 4 billion years ago — the Moon\'s gravity has been slowing us down.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 2.5);
+              vec3 ocean = mix(vec3(0.02, 0.05, 0.2), vec3(0.05, 0.2, 0.4), smoothstep(0.3, 0.45, n));
+              vec3 land = mix(vec3(0.05, 0.2, 0.1), vec3(0.4, 0.4, 0.2), fbm(vWorldPosition*10.0));
+              vec3 color = n > 0.45 ? land : ocean;
+
+              vec3 lDir = normalize(-vWorldPosition);
+              float darkSide = smoothstep(0.1, -0.1, dot(normalize(vWorldNormal), lDir));
+              float cityNoise = fbm(vWorldPosition * 25.0) * fbm(vWorldPosition * 50.0);
+              // Active state: auroras at the poles + amplified city glow
+              float aurora = smoothstep(0.7, 1.0, abs(normalize(vWorldPosition).y)) * fbm(vWorldPosition * 12.0 + time * 2.0) * interaction * 3.0;
+              vec3 extra = vec3(0.0, 1.0, 1.5) * cityNoise * darkSide * (2.0 + interaction * 4.0) + vec3(0.1, 0.8, 0.4) * aurora;
+          `
+      }
+  },
+  {
+      id: 'mars',
+      name: 'Mars',
+      kicker: 'Planet 04',
+      description: 'A dusty, cold desert world. Click to trigger a massive dust storm across its rusty surface.',
+      uiColor: 'red',
+      r: 1.0, dist: 46, orbit: 1/687, rot: 1/1.03, maxMoonDist: 2.3,
+      atmosphere: 0xff4400,
+      dayLength: '24 hours 37 minutes',
+      yearLength: '687 Earth days (~1.88 years)',
+      moons: [
+          { name: 'Phobos', r: 0.1, dist: 1.8, speed: 4.5, color: 0x888888 },
+          { name: 'Deimos', r: 0.07, dist: 2.3, speed: 3.2, color: 0x777777 }
+      ],
+      facts: [
+        'Mars has the tallest volcano in the solar system — Olympus Mons, 21.9 km high (2.5× Everest).',
+        'Valles Marineris is a canyon system stretching 4,000 km — as long as the entire United States.',
+        'Mars dust storms can engulf the entire planet and last for months.',
+        'Phobos orbits Mars faster than Mars rotates — it rises in the west and sets in the east.',
+        'One Earth year on Mars equals about 668 Martian sols.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 4.0);
+              float crater = fbm(vWorldPosition * 15.0);
+              vec3 color = mix(vec3(0.4, 0.1, 0.05), vec3(0.7, 0.3, 0.1), smoothstep(0.3, 0.7, n));
+              color = mix(color, vec3(0.2, 0.05, 0.0), smoothstep(0.6, 0.9, crater) * 0.6);
+              // Active state: global dust storm
+              float dustStorm = fbm(vWorldPosition * 3.0 + time * (0.2 + interaction * 4.0));
+              float dustIntensity = interaction * smoothstep(0.3, 0.8, dustStorm);
+              vec3 extra = vec3(0.9, 0.5, 0.2) * dustIntensity * 1.5;
+              color = mix(color, vec3(0.7, 0.4, 0.2), dustIntensity * 0.6);
+          `
+      }
+  },
+  {
+      id: 'jupiter',
+      name: 'Jupiter',
+      kicker: 'Planet 05',
+      description: 'The gas giant king. Click to intensify the Great Red Spot and warp the atmospheric bands.',
+      uiColor: 'yellow',
+      r: 4.0, dist: 72, orbit: 1/4333, rot: 1/0.41, maxMoonDist: 11.5,
+      atmosphere: 0xffcc88,
+      dayLength: '9 hours 56 minutes',
+      yearLength: '11.86 Earth years',
+      moons: [
+          { name: 'Io', r: 0.25, dist: 6.5, speed: 5.0, color: 0xddaa55 },
+          { name: 'Europa', r: 0.22, dist: 8.0, speed: 4.0, color: 0xeeeeee },
+          { name: 'Ganymede', r: 0.35, dist: 9.5, speed: 3.2, color: 0xaaaaaa },
+          { name: 'Callisto', r: 0.3, dist: 11.5, speed: 2.2, color: 0x777777 }
+      ],
+      facts: [
+        'Jupiter has at least 95 known moons — the most of any planet.',
+        'The Great Red Spot is a storm larger than Earth that has raged for at least 350 years.',
+        'Jupiter\'s magnetic field is 20,000× stronger than Earth\'s.',
+        'Europa\'s subsurface ocean may contain more water than all of Earth\'s oceans combined.',
+        'Jupiter acts as a cosmic vacuum cleaner, deflecting asteroids away from the inner planets.',
+      ],
+      shader: {
+          fragmentCore: `
+              float bands = sin(vWorldPosition.y * 5.0 + fbm(vWorldPosition * 3.0 + time * 0.05) * 2.0);
+              vec3 c1 = vec3(0.8, 0.7, 0.6);
+              vec3 c2 = vec3(0.6, 0.4, 0.2);
+              vec3 color = mix(c1, c2, smoothstep(-0.5, 0.5, bands));
+              // Active state: Great Red Spot intensifies, bands warp
+              float warp = fbm(vWorldPosition * 2.0 - time * (0.1 + interaction * 2.0)) * (0.1 + interaction);
+              color = mix(color, vec3(0.9, 0.3, 0.1), warp);
+              // Spot simulation
+              float spotDist = length(vWorldPosition.xz - vec2(2.0, 1.0));
+              float spot = smoothstep(1.5, 0.5, spotDist) * (0.3 + interaction * 0.7);
+              vec3 extra = vec3(0.8, 0.2, 0.0) * spot;
+          `
+      }
+  },
+  {
+      id: 'saturn',
+      name: 'Saturn',
+      kicker: 'Planet 06',
+      description: 'Adorned with stunning ice rings. Click to reveal Titan and see the hexagonal polar storm.',
+      uiColor: 'amber',
+      r: 3.2, dist: 105, orbit: 1/10759, rot: 1/0.45, maxMoonDist: 10.5,
+      atmosphere: 0xffddaa,
+      rings: { inner: 4.2, outer: 8.0, color: 0xdab88c },
+      dayLength: '10 hours 42 minutes',
+      yearLength: '29.46 Earth years',
+      moons: [
+          { name: 'Titan', r: 0.38, dist: 7.5, speed: 2.5, color: 0xeeb355 },
+          { name: 'Enceladus', r: 0.12, dist: 5.5, speed: 4.2, color: 0xffffff },
+          { name: 'Mimas', r: 0.08, dist: 4.8, speed: 5.0, color: 0xcccccc },
+          { name: 'Rhea', r: 0.15, dist: 8.5, speed: 3.0, color: 0xbbbbbb },
+          { name: 'Dione', r: 0.1, dist: 6.2, speed: 3.8, color: 0xaaaaaa },
+          { name: 'Tethys', r: 0.1, dist: 6.8, speed: 3.5, color: 0xdddddd },
+          { name: 'Iapetus', r: 0.14, dist: 10.0, speed: 1.5, color: 0x888888 },
+      ],
+      facts: [
+        'Saturn\'s density is so low it would float in water — if you could find a bathtub big enough.',
+        'Saturn has a bizarre hexagonal storm at its north pole, 30,000 km across.',
+        'Titan has lakes of liquid methane and a thick nitrogen atmosphere — the only moon with a dense atmosphere.',
+        'Enceladus shoots geysers of ice into space, feeding Saturn\'s E-ring.',
+        'Saturn\'s rings are mostly water ice and stretch 282,000 km wide but are only ~10 meters thick.',
+      ],
+      maxMoonDist: 10.0,
+      shader: {
+          fragmentCore: `
+              float bands = sin(vWorldPosition.y * 6.0 + fbm(vWorldPosition * 2.0) * 1.5);
+              vec3 color = mix(vec3(0.9, 0.8, 0.6), vec3(0.7, 0.6, 0.4), smoothstep(-0.5, 0.5, bands));
+              // Active state: hexagonal polar storm
+              float polarDist = abs(normalize(vWorldPosition).y);
+              float hexStorm = fbm(vWorldPosition * 8.0 + time * (0.1 + interaction * 3.0)) * smoothstep(0.6, 0.95, polarDist) * interaction;
+              vec3 extra = vec3(0.9, 0.7, 0.3) * hexStorm * 2.0;
+          `
+      }
+  },
+  {
+      id: 'uranus',
+      name: 'Uranus',
+      kicker: 'Planet 07',
+      description: 'An ice giant that rotates on its side. Click to see methane ice storms swirl across the atmosphere.',
+      uiColor: 'cyan',
+      r: 1.8, dist: 130, orbit: 1/30687, rot: 1/0.72, maxMoonDist: 6.5,
+      tilt: Math.PI / 2,
+      atmosphere: 0x88ffff,
+      rings: { inner: 2.5, outer: 2.6, color: 0xffffff, tilt: Math.PI / 2 },
+      dayLength: '17 hours 14 minutes (retrograde)',
+      yearLength: '84 Earth years',
+      moons: [
+          { name: 'Miranda', r: 0.1, dist: 3.0, speed: 4.5, color: 0xdddddd },
+          { name: 'Ariel', r: 0.14, dist: 3.6, speed: 3.8, color: 0xcccccc },
+          { name: 'Umbriel', r: 0.14, dist: 4.2, speed: 3.2, color: 0x999999 },
+          { name: 'Titania', r: 0.18, dist: 5.2, speed: 2.8, color: 0xbbbbbb },
+          { name: 'Oberon', r: 0.17, dist: 6.0, speed: 2.1, color: 0xaaaaaa },
+      ],
+      facts: [
+        'Uranus is tilted 98° on its axis — it basically rolls around the Sun on its side.',
+        'This extreme tilt means each pole gets 42 years of continuous sunlight, then 42 years of darkness.',
+        'Uranus was the first planet discovered with a telescope (William Herschel, 1781).',
+        'Its blue-green color comes from methane in the atmosphere absorbing red light.',
+        'Wind speeds can reach 900 km/h despite receiving very little solar energy.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 3.5);
+              float bands = sin(vWorldPosition.y * 8.0 + n * 1.5);
+              vec3 color = mix(vec3(0.5, 0.8, 0.85), vec3(0.35, 0.65, 0.75), smoothstep(-0.5, 0.5, bands));
+              color = mix(color, vec3(0.6, 0.9, 0.95), smoothstep(0.5, 0.8, n) * 0.3);
+              // Active state: methane ice storms
+              float storm = fbm(vWorldPosition * 5.0 + time * (0.1 + interaction * 3.0));
+              float stormIntensity = interaction * smoothstep(0.4, 0.8, storm);
+              vec3 extra = vec3(0.3, 0.9, 1.0) * stormIntensity * 1.5;
+              color = mix(color, vec3(0.7, 0.95, 1.0), stormIntensity * 0.4);
+          `
+      }
+  },
+  {
+      id: 'neptune',
+      name: 'Neptune',
+      kicker: 'Planet 08',
+      description: 'Dark and cold. The windiest planet — supersonic storms rage across its deep blue atmosphere.',
+      uiColor: 'blue',
+      r: 1.7, dist: 155, orbit: 1/60190, rot: 1/0.67, maxMoonDist: 6.0,
+      atmosphere: 0x4466ff,
+      dayLength: '16 hours 6 minutes',
+      yearLength: '164.8 Earth years',
+      moons: [
+          { name: 'Triton', r: 0.25, dist: 4.2, speed: -2.9, color: 0xcccccc },
+          { name: 'Proteus', r: 0.08, dist: 3.2, speed: 4.0, color: 0x999999 },
+          { name: 'Nereid', r: 0.06, dist: 5.5, speed: 1.2, color: 0xbbbbbb },
+      ],
+      facts: [
+        'Neptune has the fastest winds in the solar system — up to 2,100 km/h (supersonic).',
+        'Triton orbits Neptune backwards (retrograde) and is likely a captured Kuiper Belt object.',
+        'Neptune was the first planet found by mathematical prediction rather than direct observation.',
+        'One Neptunian year is so long that it hasn\'t completed a full orbit since its discovery in 1846.',
+        'Triton has cryovolcanoes that erupt nitrogen gas and dust 8 km into the sky.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 3.0);
+              float bands = sin(vWorldPosition.y * 7.0 + n * 2.0 + time * 0.03);
+              vec3 color = mix(vec3(0.1, 0.15, 0.5), vec3(0.15, 0.3, 0.7), smoothstep(-0.5, 0.5, bands));
+              color = mix(color, vec3(0.2, 0.4, 0.8), smoothstep(0.5, 0.8, n) * 0.4);
+              // Active state: supersonic storms, dark spot
+              float stormSpeed = 0.1 + interaction * 5.0;
+              float storm = fbm(vWorldPosition * 4.0 + time * stormSpeed);
+              float darkSpot = smoothstep(1.5, 0.3, length(vWorldPosition.xz - vec2(1.0, 0.5))) * (0.2 + interaction * 0.8);
+              vec3 extra = vec3(0.1, 0.3, 0.9) * storm * interaction * 1.5 + vec3(0.0, 0.0, 0.3) * darkSpot;
+          `
+      }
+  },
+  {
+      id: 'pluto',
+      name: 'Pluto',
+      kicker: 'Dwarf Planet',
+      description: 'A complex icy world far out in the Kuiper Belt, forever locked in a gravitational dance with Charon.',
+      uiColor: 'gray',
+      r: 0.3, dist: 180, orbit: 1/90560, rot: 1/6.39, maxMoonDist: 2.8,
+      dayLength: '6.4 Earth days (retrograde)',
+      yearLength: '248 Earth years',
+      moons: [
+          { name: 'Charon', r: 0.15, dist: 1.0, speed: 4.0, color: 0x999999 },
+          { name: 'Nix', r: 0.03, dist: 1.6, speed: 3.0, color: 0xbbbbbb },
+          { name: 'Hydra', r: 0.03, dist: 2.0, speed: 2.5, color: 0xaaaaaa },
+          { name: 'Kerberos', r: 0.02, dist: 2.4, speed: 2.0, color: 0x888888 },
+          { name: 'Styx', r: 0.02, dist: 2.7, speed: 1.8, color: 0x777777 },
+      ],
+      facts: [
+        'Pluto and Charon are tidally locked — they always show the same face to each other.',
+        'Charon is so large relative to Pluto (half its size) that they orbit a shared point in space.',
+        'Pluto has a heart-shaped glacier of frozen nitrogen called Tombaugh Regio.',
+        'At its closest, Pluto is actually nearer to the Sun than Neptune.',
+        'It was reclassified from planet to dwarf planet in 2006, sparking a debate that continues today.',
+      ],
+      shader: {
+          fragmentCore: `
+              float n = fbm(vWorldPosition * 8.0);
+              float heart = fbm(vWorldPosition * 12.0 + 5.0);
+              vec3 color = mix(vec3(0.55, 0.45, 0.4), vec3(0.8, 0.78, 0.75), n);
+              // Heart shaped lighter region
+              color = mix(color, vec3(0.9, 0.88, 0.85), smoothstep(0.5, 0.8, heart) * 0.4);
+              // Active state: nitrogen sublimation shimmer
+              float shimmer = fbm(vWorldPosition * 15.0 + time * (0.1 + interaction * 2.0)) * interaction;
+              vec3 extra = vec3(0.6, 0.7, 0.9) * shimmer * 0.8;
+          `
+      }
+  }
+];

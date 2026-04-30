@@ -1,0 +1,141 @@
+import * as THREE from 'three';
+
+export class CameraRig {
+  constructor(camera) {
+    this.camera = camera;
+    this.targetPos = new THREE.Vector3(0, 30, 80);
+    this.targetLook = new THREE.Vector3(0, 0, 0);
+    this.smoothPos = new THREE.Vector3(0, 30, 80);
+    this.smoothLook = new THREE.Vector3(0, 0, 0);
+    
+    // Base orbital angle
+    this.camTheta = 3.5;
+    this.camPhi = Math.PI / 2.5;
+    
+    // Mouse parallax
+    this.mouseNormX = 0;
+    this.mouseNormY = 0;
+    
+    this.smoothScrollVelocity = 0;
+    this.currentZoomLevel = 0; // 0=planets, 1=solar overview, 2=neighborhood, 3=galaxy
+  }
+
+  updateMouseParallax(normX, normY) {
+    this.mouseNormX += (normX - this.mouseNormX) * 0.06;
+    this.mouseNormY += (normY - this.mouseNormY) * 0.06;
+  }
+
+  getCameraTarget(planet, isFocused, time) {
+    let targetDist = isFocused ? Math.max(planet.r * 2.5, (planet.maxMoonDist || 0) * 1.5 + 2) : (planet.r * 6 + 6);
+    if (planet.id === 'sun') targetDist = isFocused ? 20 : 32;
+
+    const parallaxTheta = this.mouseNormX * 0.8;
+    const parallaxPhi = this.mouseNormY * 0.4;
+    
+    const finalTheta = planet.bodyRef.orbitAngle + this.camTheta + parallaxTheta;
+    const finalPhi = Math.max(0.2, Math.min(Math.PI - 0.2, this.camPhi + parallaxPhi));
+    
+    const offsetX = targetDist * Math.sin(finalPhi) * Math.cos(finalTheta);
+    const offsetY = targetDist * Math.cos(finalPhi);
+    const offsetZ = targetDist * Math.sin(finalPhi) * Math.sin(finalTheta);
+
+    return new THREE.Vector3(
+      planet.bodyRef.meshGroup.position.x + offsetX, 
+      planet.bodyRef.meshGroup.position.y + offsetY, 
+      planet.bodyRef.meshGroup.position.z + offsetZ
+    );
+  }
+
+  /**
+   * Main update. Now handles both planet-level scrolling and zoom-out phases.
+   * @param {number} scrollFraction - 0 to 1 across the entire scroll
+   * @param {number} planetCount - number of planet sections
+   * @param {Array} zoomOutSections - the zoom-out section configs
+   */
+  update(delta, scrollFraction, targetScrollVelocity, planets, activePlanetId, time, zoomOutSections) {
+    // Scroll FOV Warp
+    this.smoothScrollVelocity += (Math.abs(targetScrollVelocity) - this.smoothScrollVelocity) * 0.05;
+    const targetFov = 45 + Math.min(this.smoothScrollVelocity * 0.3, 30); 
+    this.camera.fov += (targetFov - this.camera.fov) * 0.08;
+    this.camera.updateProjectionMatrix();
+
+    const totalSections = planets.length + zoomOutSections.length;
+    const continuousSection = scrollFraction * (totalSections - 1);
+    const currentSectionIdx = Math.floor(continuousSection);
+    let t = continuousSection - currentSectionIdx;
+    t = t * t * t * (t * (t * 6 - 15) + 10); // quintic ease
+
+    if (currentSectionIdx < planets.length - 1) {
+      // ========== PLANET SECTIONS ==========
+      this.currentZoomLevel = 0;
+      
+      const secA = currentSectionIdx;
+      const secB = Math.min(secA + 1, planets.length - 1);
+
+      const posA = this.getCameraTarget(planets[secA], activePlanetId === planets[secA].id, time);
+      const posB = this.getCameraTarget(planets[secB], activePlanetId === planets[secB].id, time);
+      this.targetPos.copy(posA).lerp(posB, t);
+
+      const lookA = planets[secA].bodyRef.meshGroup.position.clone();
+      const lookB = planets[secB].bodyRef.meshGroup.position.clone();
+      this.targetLook.copy(lookA).lerp(lookB, t);
+
+    } else {
+      // ========== TRANSITION & ZOOM-OUT SECTIONS ==========
+      const zoomIdx = currentSectionIdx - (planets.length - 1);
+      
+      if (zoomIdx === 0) {
+        // Transitioning from last planet (Pluto) to first zoom-out section
+        const lastPlanet = planets[planets.length - 1];
+        const planetPos = this.getCameraTarget(lastPlanet, false, time);
+        const planetLook = lastPlanet.bodyRef.meshGroup.position.clone();
+        
+        const zoomSection = zoomOutSections[0];
+        const zoomPos = new THREE.Vector3(zoomSection.cameraPos.x, zoomSection.cameraPos.y, zoomSection.cameraPos.z);
+        const zoomLook = new THREE.Vector3(zoomSection.cameraLook.x, zoomSection.cameraLook.y, zoomSection.cameraLook.z);
+        
+        // Add parallax to zoom positions too
+        zoomPos.x += this.mouseNormX * 50;
+        zoomPos.z += this.mouseNormY * 30;
+        
+        this.targetPos.copy(planetPos).lerp(zoomPos, t);
+        this.targetLook.copy(planetLook).lerp(zoomLook, t);
+        this.currentZoomLevel = t > 0.3 ? zoomSection.zoomLevel : 0;
+        
+      } else {
+        // Between zoom-out sections
+        const idxA = Math.min(zoomIdx - 1, zoomOutSections.length - 1);
+        const idxB = Math.min(zoomIdx, zoomOutSections.length - 1);
+        
+        const sA = zoomOutSections[idxA];
+        const sB = zoomOutSections[idxB];
+        
+        const posA = new THREE.Vector3(sA.cameraPos.x, sA.cameraPos.y, sA.cameraPos.z);
+        const posB = new THREE.Vector3(sB.cameraPos.x, sB.cameraPos.y, sB.cameraPos.z);
+        const lookA = new THREE.Vector3(sA.cameraLook.x, sA.cameraLook.y, sA.cameraLook.z);
+        const lookB = new THREE.Vector3(sB.cameraLook.x, sB.cameraLook.y, sB.cameraLook.z);
+        
+        // Parallax at galaxy scale
+        posB.x += this.mouseNormX * 100;
+        posB.z += this.mouseNormY * 60;
+        posA.x += this.mouseNormX * 50;
+        posA.z += this.mouseNormY * 30;
+        
+        this.targetPos.copy(posA).lerp(posB, t);
+        this.targetLook.copy(lookA).lerp(lookB, t);
+        this.currentZoomLevel = t > 0.5 ? sB.zoomLevel : sA.zoomLevel;
+      }
+    }
+
+    // Smooth camera interpolation — slower for big movements
+    const dist = this.smoothPos.distanceTo(this.targetPos);
+    const lerpSpeed = dist > 100 ? 0.02 : 0.04;
+    this.smoothPos.lerp(this.targetPos, lerpSpeed);
+    this.smoothLook.lerp(this.targetLook, lerpSpeed + 0.02);
+    
+    this.camera.position.copy(this.smoothPos);
+    this.camera.lookAt(this.smoothLook);
+    
+    return this.camera.position.distanceTo(this.smoothLook);
+  }
+}
