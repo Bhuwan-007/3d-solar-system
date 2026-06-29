@@ -50,6 +50,7 @@ class App {
     this.audioEngine = new AudioEngine();
 
     // State
+    this.activeSystemId = 'solar';
     this.activePlanetId = null;
     this.activePlanetData = null;
     this.ORBIT_MULTIPLIER = 4000;  
@@ -75,6 +76,76 @@ class App {
     this.uiManager.setFocusState(false);
   }
 
+  enterStarSystem(starId) {
+    this.activeSystemId = starId;
+    const starData = nearbyStarsData.find(s => s.id === starId);
+    
+    // Inject UI: Star + Planets + Return section
+    const systemSections = [starData];
+    if (starData.planets) {
+      systemSections.push(...starData.planets);
+    }
+    const returnSection = [{
+      id: 'return',
+      kicker: 'Return',
+      name: 'Stellar Neighborhood',
+      description: 'Leave the system and return to the stellar neighborhood.',
+      cameraPos: zoomOutSections[1].cameraPos,
+      cameraLook: zoomOutSections[1].cameraLook,
+      zoomLevel: 2 
+    }];
+    
+    this.uiManager.injectAllSections(systemSections, returnSection);
+    
+    this.inputManager.ignoreNextScroll = true;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    this.inputManager.scrollFraction = 0;
+    this.inputManager.targetScrollFraction = 0;
+    this.uiManager.updateScrollSection(0);
+    
+    this.activePlanetId = starId;
+    this.activePlanetData = starData;
+    this.uiManager.setFocusState(true, starData);
+  }
+
+  exitStarSystem() {
+    this.activeSystemId = 'solar';
+    this.unfocus();
+    
+    this.uiManager.injectAllSections(solarSystemData, zoomOutSections);
+    
+    const targetSectionIdx = solarSystemData.length + 1; // Stellar Neighborhood
+    const targetScrollFraction = targetSectionIdx / (this.uiManager.totalSections - 1);
+    
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const targetY = targetScrollFraction * maxScroll;
+    
+    this.inputManager.ignoreNextScroll = true;
+    window.scrollTo({ top: targetY, behavior: 'instant' });
+    this.inputManager.scrollFraction = targetScrollFraction;
+    this.inputManager.targetScrollFraction = targetScrollFraction;
+    this.uiManager.updateScrollSection(targetScrollFraction);
+  }
+
+  getActiveSystemPlanets() {
+    if (this.activeSystemId === 'solar') {
+      return this.solarSystem.getPlanetsData();
+    }
+    
+    const allStarsAndPlanets = this.galaxy.getStarsData();
+    const starId = this.activeSystemId;
+    const starData = nearbyStarsData.find(s => s.id === starId);
+    
+    const activePlanets = [];
+    activePlanets.push(allStarsAndPlanets.find(e => e.id === starId));
+    if (starData.planets) {
+      starData.planets.forEach(p => {
+        activePlanets.push(allStarsAndPlanets.find(e => e.id === p.id));
+      });
+    }
+    return activePlanets;
+  }
+
   bindEvents() {
     document.addEventListener('click', (e) => {
       if (e.target.closest('#init-audio-btn')) {
@@ -92,6 +163,14 @@ class App {
       if (this.activePlanetId === mesh.userData.id) {
         this.unfocus();
       } else {
+        const isNearbyStar = nearbyStarsData.some(s => s.id === mesh.userData.id);
+        if (isNearbyStar && this.activeSystemId === 'solar') {
+          // Enter the star system
+          this.enterStarSystem(mesh.userData.id);
+          this.audioEngine.playUIClick();
+          return;
+        }
+
         this.activePlanetId = mesh.userData.id;
         this.activePlanetData = this.findPlanetDataById(mesh.userData.id);
         this.uiManager.setFocusState(true, this.activePlanetData);
@@ -128,6 +207,11 @@ class App {
     // 2. Update UI
     this.uiManager.updateCursor();
     this.uiManager.updateScrollSection(this.inputManager.scrollFraction);
+    
+    // Auto-exit star system if user scrolls to the very bottom
+    if (this.activeSystemId !== 'solar' && this.uiManager.currentSection === this.uiManager.totalSections - 1) {
+      this.exitStarSystem();
+    }
 
     // 3. Update Audio
     this.audioEngine.updateWarpSound(this.inputManager.targetScrollVelocity);
@@ -141,19 +225,32 @@ class App {
 
     // 6. Update Camera Rig — now handles zoom-out sections too
     const allEntities = [...this.solarSystem.getPlanetsData(), ...this.galaxy.getStarsData()];
+    
+    const activeSystemPlanets = this.getActiveSystemPlanets();
+    const currentZoomOutSections = this.activeSystemId === 'solar' ? zoomOutSections : [{
+      id: 'return',
+      kicker: 'Return',
+      name: 'Stellar Neighborhood',
+      description: 'Leave the system and return to the stellar neighborhood.',
+      cameraPos: zoomOutSections[1].cameraPos,
+      cameraLook: zoomOutSections[1].cameraLook,
+      zoomLevel: 2 
+    }];
+
     this.cameraRig.update(
         delta, 
         this.inputManager.scrollFraction, 
         this.inputManager.targetScrollVelocity, 
-        this.solarSystem.getPlanetsData(), 
+        activeSystemPlanets, 
         this.activePlanetId, 
         time,
-        zoomOutSections,
+        currentZoomOutSections,
         allEntities
     );
 
     // 7. Update Galaxy visibility based on zoom level
-    this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel);
+    const isStarSystemFocused = this.activeSystemId !== 'solar';
+    this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel, isStarSystemFocused);
     this.galaxy.update(time, delta, this.activePlanetId, this.ORBIT_MULTIPLIER, this.ROTATION_MULTIPLIER, this.MOON_MULTIPLIER);
 
     // 8. Render

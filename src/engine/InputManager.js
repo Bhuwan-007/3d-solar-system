@@ -17,6 +17,7 @@ export class InputManager {
     this.targetScrollVelocity = 0;
     this.scrollFraction = 0;
     this.targetScrollFraction = 0;
+    this.ignoreNextScroll = false;
     
     // Callbacks
     this.onPlanetClick = null;
@@ -59,6 +60,12 @@ export class InputManager {
     });
 
     window.addEventListener('scroll', () => {
+      if (this.ignoreNextScroll) {
+        this.ignoreNextScroll = false;
+        this.lastScrollY = window.scrollY;
+        return;
+      }
+
       const scrollY = window.scrollY;
       this.targetScrollVelocity = scrollY - this.lastScrollY; 
       this.lastScrollY = scrollY;

@@ -316,9 +316,37 @@ export class Galaxy {
       sprite.scale.set(60, 15, 1);
       sprite.position.y = starConfig.r * 1.5 + 8;
       
+      // We attach the label to a pivot so it scales correctly, but wait, the sprite is added directly to meshGroup
       body.meshGroup.add(sprite);
       this.nearbyStarsGroup.add(body.meshGroup);
       this.nearbyStarBodies.push(body);
+
+      // Create exoplanets if any
+      if (starConfig.planets) {
+        starConfig.planets.forEach(planetConfig => {
+          // Exoplanets orbit their star, so they are not fixed position!
+          const planetConfigData = {
+            ...planetConfig,
+            isStar: false,
+            isFixedPosition: false
+          };
+          
+          const planetBody = new CelestialBody(planetConfigData, this.glslNoise, this.terminatorVertexLogic, this.terminatorLightMath);
+          
+          // Draw orbit ring around the star
+          if (planetConfig.dist > 0) {
+            const geo = new THREE.RingGeometry(planetConfig.dist - 0.05, planetConfig.dist + 0.05, 64);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.1 });
+            const orbitRing = new THREE.Mesh(geo, mat);
+            orbitRing.rotation.x = Math.PI / 2;
+            body.meshGroup.add(orbitRing);
+          }
+
+          body.meshGroup.add(planetBody.meshGroup);
+          // We push them into the same array so they become interactables and animate
+          this.nearbyStarBodies.push(planetBody);
+        });
+      }
     });
     
     this.nearbyStarsGroup.visible = false;
@@ -330,23 +358,53 @@ export class Galaxy {
   }
 
   getStarsData() {
-    return this.nearbyStarBodies ? nearbyStarsData.map((data, index) => ({
-      ...data,
-      isStar: true,
-      bodyRef: this.nearbyStarBodies[index]
-    })) : [];
+    if (!this.nearbyStarBodies) return [];
+    
+    const flatData = [];
+    let bodyIndex = 0;
+    
+    nearbyStarsData.forEach(starConfig => {
+      flatData.push({
+        ...starConfig,
+        isStar: true,
+        bodyRef: this.nearbyStarBodies[bodyIndex++]
+      });
+      
+      if (starConfig.planets) {
+        starConfig.planets.forEach(planetConfig => {
+          flatData.push({
+            ...planetConfig,
+            isStar: false,
+            bodyRef: this.nearbyStarBodies[bodyIndex++]
+          });
+        });
+      }
+    });
+    
+    return flatData;
   }
 
   /**
    * Update visibility based on the current zoom level.
    * @param {number} zoomLevel - 0 = planet view, 1 = solar overview, 2 = stellar neighborhood, 3 = galaxy
+   * @param {boolean} isStarSystemFocused - true if user is exploring a nearby star system
    */
-  updateVisibility(zoomLevel) {
-    this.group.visible = zoomLevel >= 1;
-    this.asteroidBelt.visible = zoomLevel >= 1;
-    this.kuiperBelt.visible = zoomLevel >= 1;
-    this.nearbyStarsGroup.visible = zoomLevel >= 2;
-    this.galaxyGroup.visible = zoomLevel >= 3;
+  updateVisibility(zoomLevel, isStarSystemFocused = false) {
+    if (isStarSystemFocused) {
+      this.group.visible = true;
+      this.asteroidBelt.visible = false;
+      this.kuiperBelt.visible = false;
+      this.nearbyStarsGroup.visible = true;
+      this.milkyWay.visible = false;
+      this.galaxyGroup.visible = false;
+    } else {
+      this.group.visible = zoomLevel >= 1; 
+      this.asteroidBelt.visible = zoomLevel >= 1 && zoomLevel < 3;
+      this.kuiperBelt.visible = zoomLevel >= 1;
+      this.nearbyStarsGroup.visible = zoomLevel >= 2;
+      this.milkyWay.visible = zoomLevel >= 3;
+      this.galaxyGroup.visible = zoomLevel >= 3;
+    }
   }
 
   update(time, delta, activePlanetId, ORBIT_MULTIPLIER, ROTATION_MULTIPLIER, MOON_MULTIPLIER) {

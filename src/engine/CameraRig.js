@@ -39,10 +39,13 @@ export class CameraRig {
     const offsetY = targetDist * Math.cos(finalPhi);
     const offsetZ = targetDist * Math.sin(finalPhi) * Math.sin(finalTheta);
 
+    const worldPos = new THREE.Vector3();
+    planet.bodyRef.meshGroup.getWorldPosition(worldPos);
+
     return new THREE.Vector3(
-      planet.bodyRef.meshGroup.position.x + offsetX, 
-      planet.bodyRef.meshGroup.position.y + offsetY, 
-      planet.bodyRef.meshGroup.position.z + offsetZ
+      worldPos.x + offsetX, 
+      worldPos.y + offsetY, 
+      worldPos.z + offsetZ
     );
   }
 
@@ -77,8 +80,12 @@ export class CameraRig {
       const posB = this.getCameraTarget(planets[secB], activePlanetId === planets[secB].id, time);
       this.targetPos.copy(posA).lerp(posB, t);
 
-      const lookA = planets[secA].bodyRef.meshGroup.position.clone();
-      const lookB = planets[secB].bodyRef.meshGroup.position.clone();
+      const lookA = new THREE.Vector3();
+      planets[secA].bodyRef.meshGroup.getWorldPosition(lookA);
+      
+      const lookB = new THREE.Vector3();
+      planets[secB].bodyRef.meshGroup.getWorldPosition(lookB);
+      
       this.targetLook.copy(lookA).lerp(lookB, t);
 
     } else {
@@ -91,7 +98,9 @@ export class CameraRig {
         // Transitioning from last planet (Pluto) to first zoom-out section
         const lastPlanet = planets[planets.length - 1];
         const planetPos = this.getCameraTarget(lastPlanet, false, time);
-        const planetLook = lastPlanet.bodyRef.meshGroup.position.clone();
+        
+        const planetLook = new THREE.Vector3();
+        lastPlanet.bodyRef.meshGroup.getWorldPosition(planetLook);
         
         const zoomSection = zoomOutSections[0];
         const zoomPos = new THREE.Vector3(zoomSection.cameraPos.x, zoomSection.cameraPos.y, zoomSection.cameraPos.z);
@@ -130,23 +139,19 @@ export class CameraRig {
       }
 
       // If a nearby star is clicked during any of the stellar neighborhood zoom sections
-      if (activePlanetId) {
-        const activeEntity = allEntities.find(e => e.id === activePlanetId);
-        if (activeEntity && activeEntity.isStar) {
-           baseTargetPos = this.getCameraTarget(activeEntity, true, time);
-           baseTargetLook = activeEntity.bodyRef.meshGroup.position.clone();
-        }
-      }
-      
+      // Wait, we don't need this specific activePlanetId override for stars if the 
+      // whole scrolling system swaps to the active star system! 
+      // I should remove this activePlanetId override here entirely, as it will be handled by the main planet sections when the UI swaps context!
+      // But let's leave it in case we are in zoom-out and want to smoothly zoom into the star before the scroll fraction updates.
+      // Actually, if we swap context, currentSectionIdx will be 0 (Star), which uses the PLANET SECTIONS logic!
+      // So we don't need this override here anymore if we fully swap context! Let's remove it to keep it clean.
       this.targetPos.copy(baseTargetPos);
       this.targetLook.copy(baseTargetLook);
     }
 
     // Smooth camera interpolation — slower for big movements
     const dist = this.smoothPos.distanceTo(this.targetPos);
-    // When focusing a star, we want standard fast lerp speed, not the super slow zoom-out speed
-    const isStarFocused = activePlanetId && allEntities.find(e => e.id === activePlanetId && e.isStar);
-    const lerpSpeed = (dist > 100 && !isStarFocused) ? 0.02 : 0.04;
+    const lerpSpeed = dist > 100 ? 0.02 : 0.04;
     
     this.smoothPos.lerp(this.targetPos, lerpSpeed);
     this.smoothLook.lerp(this.targetLook, lerpSpeed + 0.02);
