@@ -21,6 +21,8 @@ export class CelestialBody {
     this.glslNoise = glslNoise;
     this.terminatorVertexLogic = terminatorVertexLogic;
     this.terminatorLightMath = terminatorLightMath;
+    this.isStar = config.isStar || false;
+    this.isFixedPosition = config.isFixedPosition || false;
 
     this.meshGroup = new THREE.Group();
     this.orbitAngle = 0;
@@ -45,7 +47,7 @@ export class CelestialBody {
     if (config.shader) {
       let vertShader = this.terminatorVertexLogic;
       
-      if (this.id === 'sun') {
+      if (this.id === 'sun' || this.isStar) {
         vertShader = `
           ${this.glslNoise}
           varying vec3 vWorldPosition;
@@ -63,13 +65,15 @@ export class CelestialBody {
         `;
       }
 
+      const usesTerminator = (this.id !== 'sun' && !this.isStar);
+      
       let fShader = `
         ${this.glslNoise}
         varying vec3 vWorldPosition; varying vec3 vWorldNormal; uniform float time; uniform float interaction;
         void main() {
             ${config.shader.fragmentCore}
-            ${this.id !== 'sun' ? this.terminatorLightMath : ''}
-            gl_FragColor = vec4(color ${this.id !== 'sun' ? '* light' : ''} + extra, 1.0);
+            ${usesTerminator ? this.terminatorLightMath : ''}
+            gl_FragColor = vec4(color ${usesTerminator ? '* light' : ''} + extra, 1.0);
         }
       `;
 
@@ -263,7 +267,7 @@ export class CelestialBody {
   }
 
   update(time, delta, isFocused, ORBIT_MULTIPLIER, ROTATION_MULTIPLIER, MOON_MULTIPLIER) {
-    if (this.id !== 'sun') {
+    if (this.id !== 'sun' && !this.isFixedPosition) {
       this.orbitAngle = time * ORBIT_MULTIPLIER * this.orbit * 0.01; 
       this.meshGroup.position.x = Math.cos(this.orbitAngle) * this.dist;
       this.meshGroup.position.z = Math.sin(this.orbitAngle) * this.dist;
@@ -274,7 +278,7 @@ export class CelestialBody {
     else this.mesh.rotation.y = rotAngle;
     
     if (this.clouds) this.clouds.rotation.y = rotAngle * 1.15; 
-    if (this.id === 'sun') this.meshGroup.rotation.y = rotAngle;
+    if (this.id === 'sun' || this.isStar) this.meshGroup.rotation.y = rotAngle;
 
     // Moons visible when focused
     if (this.moonsList) {

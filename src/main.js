@@ -12,6 +12,7 @@ import { StarSystem } from './entities/StarSystem.js';
 import { Galaxy } from './entities/Galaxy.js';
 import { solarSystemData } from './data/solarSystem.js';
 import { zoomOutSections } from './data/zoomOutSections.js';
+import { nearbyStarsData } from './data/nearbyStars.js';
 
 class App {
   constructor() {
@@ -30,14 +31,22 @@ class App {
         this.universe.terminatorVertexLogic, 
         this.universe.terminatorLightMath
     );
-    this.galaxy = new Galaxy(this.renderer.scene);
+    this.galaxy = new Galaxy(
+        this.renderer.scene,
+        this.universe.glslNoise, 
+        this.universe.terminatorVertexLogic, 
+        this.universe.terminatorLightMath
+    );
 
     // Engine Managers — total sections = planets + zoom-out sections
     const totalSections = solarSystemData.length + zoomOutSections.length;
     this.uiManager = new UIManager(totalSections);
     this.uiManager.injectAllSections(solarSystemData, zoomOutSections);
     
-    this.inputManager = new InputManager(this.renderer.camera, this.solarSystem.getInteractables());
+    this.inputManager = new InputManager(
+        this.renderer.camera, 
+        [...this.solarSystem.getInteractables(), ...this.galaxy.getInteractables()]
+    );
     this.audioEngine = new AudioEngine();
 
     // State
@@ -57,7 +66,7 @@ class App {
   }
 
   findPlanetDataById(id) {
-    return solarSystemData.find(p => p.id === id) || null;
+    return solarSystemData.find(p => p.id === id) || nearbyStarsData.find(p => p.id === id) || null;
   }
 
   unfocus() {
@@ -131,6 +140,7 @@ class App {
     this.solarSystem.update(time, delta, this.activePlanetId, this.ORBIT_MULTIPLIER, this.ROTATION_MULTIPLIER, this.MOON_MULTIPLIER);
 
     // 6. Update Camera Rig — now handles zoom-out sections too
+    const allEntities = [...this.solarSystem.getPlanetsData(), ...this.galaxy.getStarsData()];
     this.cameraRig.update(
         delta, 
         this.inputManager.scrollFraction, 
@@ -138,12 +148,13 @@ class App {
         this.solarSystem.getPlanetsData(), 
         this.activePlanetId, 
         time,
-        zoomOutSections
+        zoomOutSections,
+        allEntities
     );
 
     // 7. Update Galaxy visibility based on zoom level
     this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel);
-    this.galaxy.update(time);
+    this.galaxy.update(time, delta, this.activePlanetId, this.ORBIT_MULTIPLIER, this.ROTATION_MULTIPLIER, this.MOON_MULTIPLIER);
 
     // 8. Render
     this.renderer.update(delta);

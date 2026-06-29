@@ -1,12 +1,18 @@
 import * as THREE from 'three';
+import { CelestialBody } from './CelestialBody.js';
+import { nearbyStarsData } from '../data/nearbyStars.js';
 
 /**
  * Galaxy entity — creates the Milky Way spiral galaxy from particles
  * and the asteroid/Kuiper belts for the solar system overview.
  */
 export class Galaxy {
-  constructor(scene) {
+  constructor(scene, glslNoise, terminatorVertexLogic, terminatorLightMath) {
     this.scene = scene;
+    this.glslNoise = glslNoise;
+    this.terminatorVertexLogic = terminatorVertexLogic;
+    this.terminatorLightMath = terminatorLightMath;
+    
     this.group = new THREE.Group();
     this.group.visible = false; // hidden until zoom-out reaches galaxy scale
     
@@ -265,78 +271,70 @@ export class Galaxy {
   /** Nearby star systems — visible in the "stellar neighborhood" view */
   createNearbyStars() {
     this.nearbyStarsGroup = new THREE.Group();
+    this.nearbyStarBodies = [];
     
-    const nearbyStars = [
-      { name: 'Alpha Centauri', dist: 350, angle: 0.8, color: 0xffee88, size: 2.5 },
-      { name: "Barnard's Star", dist: 420, angle: 2.1, color: 0xff8866, size: 1.5 },
-      { name: 'Sirius', dist: 550, angle: 4.2, color: 0xaaccff, size: 3.5 },
-      { name: 'Proxima Centauri', dist: 330, angle: 0.6, color: 0xff6644, size: 0.8 },
-      { name: 'Vega', dist: 600, angle: 5.5, color: 0xbbddff, size: 2.8 },
-      { name: 'Tau Ceti', dist: 480, angle: 3.4, color: 0xffdd77, size: 1.8 },
-    ];
-    
-    nearbyStars.forEach(star => {
-      const starGrp = new THREE.Group();
+    nearbyStarsData.forEach(starConfig => {
+      const config = {
+        ...starConfig,
+        isStar: true,
+        isFixedPosition: true,
+      };
       
-      // Star sphere
-      const starMat = new THREE.MeshBasicMaterial({ color: star.color });
-      const starMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(star.size, 16, 16), starMat
-      );
-      starGrp.add(starMesh);
+      const body = new CelestialBody(config, this.glslNoise, this.terminatorVertexLogic, this.terminatorLightMath);
       
-      // Glow
-      const glowMat = new THREE.ShaderMaterial({
-        uniforms: { color: { value: new THREE.Color(star.color) } },
-        vertexShader: `
-          varying vec3 vNormal;
-          void main() {
-            vNormal = normalize(normalMatrix * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 color; varying vec3 vNormal;
-          void main() {
-            float f = pow(1.0 - abs(dot(vNormal, vec3(0,0,1))), 3.0);
-            gl_FragColor = vec4(color, f * 0.5);
-          }
-        `,
-        transparent: true, blending: THREE.AdditiveBlending, 
-        side: THREE.FrontSide, depthWrite: false
-      });
-      const glowMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(star.size * 3, 16, 16), glowMat
+      body.meshGroup.position.set(
+        Math.cos(starConfig.angle) * starConfig.dist,
+        starConfig.yOffset || 0,
+        Math.sin(starConfig.angle) * starConfig.dist
       );
-      starGrp.add(glowMesh);
       
       // Label
       const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 48;
+      canvas.width = 512; canvas.height = 128;
       const ctx = canvas.getContext('2d');
+      
+      // Add a subtle dark background for the text to improve contrast
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.roundRect(128, 30, 256, 60, 15);
+      ctx.fill();
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = '20px Inter, sans-serif';
+      ctx.font = 'bold 36px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(star.name, 128, 30);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(starConfig.name, 256, 60);
+      
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.7 });
+      const spriteMat = new THREE.SpriteMaterial({ 
+        map: texture, 
+        transparent: true, 
+        opacity: 0.9,
+        depthWrite: false, // Ensures labels render nicely
+      });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.scale.set(40, 7.5, 1);
-      sprite.position.y = star.size * 4 + 5;
-      starGrp.add(sprite);
+      sprite.scale.set(60, 15, 1);
+      sprite.position.y = starConfig.r * 1.5 + 8;
       
-      const y = (Math.random() - 0.5) * 40;
-      starGrp.position.set(
-        Math.cos(star.angle) * star.dist,
-        y,
-        Math.sin(star.angle) * star.dist
-      );
-      
-      this.nearbyStarsGroup.add(starGrp);
+      body.meshGroup.add(sprite);
+      this.nearbyStarsGroup.add(body.meshGroup);
+      this.nearbyStarBodies.push(body);
     });
     
     this.nearbyStarsGroup.visible = false;
     this.group.add(this.nearbyStarsGroup);
+  }
+
+  getInteractables() {
+    return this.nearbyStarBodies ? this.nearbyStarBodies.map(b => b.mesh) : [];
+  }
+
+  getStarsData() {
+    return this.nearbyStarBodies ? nearbyStarsData.map((data, index) => ({
+      ...data,
+      isStar: true,
+      bodyRef: this.nearbyStarBodies[index]
+    })) : [];
   }
 
   /**
@@ -351,7 +349,7 @@ export class Galaxy {
     this.galaxyGroup.visible = zoomLevel >= 3;
   }
 
-  update(time) {
+  update(time, delta, activePlanetId, ORBIT_MULTIPLIER, ROTATION_MULTIPLIER, MOON_MULTIPLIER) {
     if (this.asteroidBelt.visible) {
       this.asteroidBelt.rotation.y = time * 0.002;
     }
@@ -360,6 +358,12 @@ export class Galaxy {
     }
     if (this.milkyWay.visible) {
       this.milkyWay.rotation.y = time * 0.0003;
+    }
+    if (this.nearbyStarBodies && this.nearbyStarsGroup.visible) {
+      this.nearbyStarBodies.forEach(body => {
+        const isFocused = (activePlanetId === body.id);
+        body.update(time, delta, isFocused, ORBIT_MULTIPLIER, ROTATION_MULTIPLIER, MOON_MULTIPLIER);
+      });
     }
   }
 }

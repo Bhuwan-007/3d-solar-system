@@ -51,8 +51,9 @@ export class CameraRig {
    * @param {number} scrollFraction - 0 to 1 across the entire scroll
    * @param {number} planetCount - number of planet sections
    * @param {Array} zoomOutSections - the zoom-out section configs
+   * @param {Array} allEntities - array containing both planets and stars for focusing
    */
-  update(delta, scrollFraction, targetScrollVelocity, planets, activePlanetId, time, zoomOutSections) {
+  update(delta, scrollFraction, targetScrollVelocity, planets, activePlanetId, time, zoomOutSections, allEntities = []) {
     // Scroll FOV Warp
     this.smoothScrollVelocity += (Math.abs(targetScrollVelocity) - this.smoothScrollVelocity) * 0.05;
     const targetFov = 45 + Math.min(this.smoothScrollVelocity * 0.3, 30); 
@@ -83,6 +84,8 @@ export class CameraRig {
     } else {
       // ========== TRANSITION & ZOOM-OUT SECTIONS ==========
       const zoomIdx = currentSectionIdx - (planets.length - 1);
+      let baseTargetPos = new THREE.Vector3();
+      let baseTargetLook = new THREE.Vector3();
       
       if (zoomIdx === 0) {
         // Transitioning from last planet (Pluto) to first zoom-out section
@@ -98,8 +101,8 @@ export class CameraRig {
         zoomPos.x += this.mouseNormX * 50;
         zoomPos.z += this.mouseNormY * 30;
         
-        this.targetPos.copy(planetPos).lerp(zoomPos, t);
-        this.targetLook.copy(planetLook).lerp(zoomLook, t);
+        baseTargetPos = new THREE.Vector3().copy(planetPos).lerp(zoomPos, t);
+        baseTargetLook = new THREE.Vector3().copy(planetLook).lerp(zoomLook, t);
         this.currentZoomLevel = t > 0.3 ? zoomSection.zoomLevel : 0;
         
       } else {
@@ -121,15 +124,30 @@ export class CameraRig {
         posA.x += this.mouseNormX * 50;
         posA.z += this.mouseNormY * 30;
         
-        this.targetPos.copy(posA).lerp(posB, t);
-        this.targetLook.copy(lookA).lerp(lookB, t);
+        baseTargetPos = new THREE.Vector3().copy(posA).lerp(posB, t);
+        baseTargetLook = new THREE.Vector3().copy(lookA).lerp(lookB, t);
         this.currentZoomLevel = t > 0.5 ? sB.zoomLevel : sA.zoomLevel;
       }
+
+      // If a nearby star is clicked during any of the stellar neighborhood zoom sections
+      if (activePlanetId) {
+        const activeEntity = allEntities.find(e => e.id === activePlanetId);
+        if (activeEntity && activeEntity.isStar) {
+           baseTargetPos = this.getCameraTarget(activeEntity, true, time);
+           baseTargetLook = activeEntity.bodyRef.meshGroup.position.clone();
+        }
+      }
+      
+      this.targetPos.copy(baseTargetPos);
+      this.targetLook.copy(baseTargetLook);
     }
 
     // Smooth camera interpolation — slower for big movements
     const dist = this.smoothPos.distanceTo(this.targetPos);
-    const lerpSpeed = dist > 100 ? 0.02 : 0.04;
+    // When focusing a star, we want standard fast lerp speed, not the super slow zoom-out speed
+    const isStarFocused = activePlanetId && allEntities.find(e => e.id === activePlanetId && e.isStar);
+    const lerpSpeed = (dist > 100 && !isStarFocused) ? 0.02 : 0.04;
+    
     this.smoothPos.lerp(this.targetPos, lerpSpeed);
     this.smoothLook.lerp(this.targetLook, lerpSpeed + 0.02);
     
