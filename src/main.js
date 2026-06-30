@@ -13,6 +13,9 @@ import { Galaxy } from './entities/Galaxy.js';
 import { solarSystemData } from './data/solarSystem.js';
 import { zoomOutSections } from './data/zoomOutSections.js';
 import { nearbyStarsData } from './data/nearbyStars.js';
+import { localGroupData } from './data/localGroup.js';
+import { superclustersData } from './data/superclusters.js';
+import { SuperclusterRenderer } from './entities/SuperclusterRenderer.js';
 
 class App {
   constructor() {
@@ -37,6 +40,8 @@ class App {
         this.universe.terminatorVertexLogic, 
         this.universe.terminatorLightMath
     );
+    
+    this.superclusters = new SuperclusterRenderer(this.renderer.scene);
 
     // Engine Managers — total sections = planets + zoom-out sections
     const totalSections = solarSystemData.length + zoomOutSections.length;
@@ -67,7 +72,11 @@ class App {
   }
 
   findPlanetDataById(id) {
-    return solarSystemData.find(p => p.id === id) || nearbyStarsData.find(p => p.id === id) || null;
+    return solarSystemData.find(p => p.id === id) 
+        || nearbyStarsData.find(p => p.id === id) 
+        || localGroupData.find(p => p.id === id) 
+        || superclustersData.find(p => p.id === id)
+        || null;
   }
 
   unfocus() {
@@ -78,22 +87,35 @@ class App {
 
   enterStarSystem(starId) {
     this.activeSystemId = starId;
-    const starData = nearbyStarsData.find(s => s.id === starId);
+    const starData = nearbyStarsData.find(s => s.id === starId) || localGroupData.find(s => s.id === starId);
     
     // Inject UI: Star + Planets + Return section
     const systemSections = [starData];
     if (starData.planets) {
       systemSections.push(...starData.planets);
     }
-    const returnSection = [{
-      id: 'return',
-      kicker: 'Return',
-      name: 'Stellar Neighborhood',
-      description: 'Leave the system and return to the stellar neighborhood.',
-      cameraPos: zoomOutSections[1].cameraPos,
-      cameraLook: zoomOutSections[1].cameraLook,
-      zoomLevel: 2 
-    }];
+    let returnSection;
+    if (localGroupData.some(s => s.id === starId)) {
+      returnSection = [{
+        id: 'return',
+        kicker: 'Return',
+        name: 'The Local Group',
+        description: 'Leave the galaxy and return to the Local Group overview.',
+        cameraPos: zoomOutSections[3].cameraPos,
+        cameraLook: zoomOutSections[3].cameraLook,
+        zoomLevel: 4 
+      }];
+    } else {
+      returnSection = [{
+        id: 'return',
+        kicker: 'Return',
+        name: 'Stellar Neighborhood',
+        description: 'Leave the system and return to the stellar neighborhood.',
+        cameraPos: zoomOutSections[1].cameraPos,
+        cameraLook: zoomOutSections[1].cameraLook,
+        zoomLevel: 2 
+      }];
+    }
     
     this.uiManager.injectAllSections(systemSections, returnSection);
     
@@ -109,12 +131,13 @@ class App {
   }
 
   exitStarSystem() {
+    const wasLocalGroup = localGroupData.some(s => s.id === this.activeSystemId);
     this.activeSystemId = 'solar';
     this.unfocus();
     
     this.uiManager.injectAllSections(solarSystemData, zoomOutSections);
     
-    const targetSectionIdx = solarSystemData.length + 1; // Stellar Neighborhood
+    const targetSectionIdx = solarSystemData.length + (wasLocalGroup ? 3 : 1); // Local Group or Stellar Neighborhood
     const targetScrollFraction = targetSectionIdx / (this.uiManager.totalSections - 1);
     
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
@@ -134,7 +157,7 @@ class App {
     
     const allStarsAndPlanets = this.galaxy.getStarsData();
     const starId = this.activeSystemId;
-    const starData = nearbyStarsData.find(s => s.id === starId);
+    const starData = nearbyStarsData.find(s => s.id === starId) || localGroupData.find(s => s.id === starId);
     
     const activePlanets = [];
     activePlanets.push(allStarsAndPlanets.find(e => e.id === starId));
@@ -163,9 +186,9 @@ class App {
       if (this.activePlanetId === mesh.userData.id) {
         this.unfocus();
       } else {
-        const isNearbyStar = nearbyStarsData.some(s => s.id === mesh.userData.id);
+        const isNearbyStar = nearbyStarsData.some(s => s.id === mesh.userData.id) || localGroupData.some(s => s.id === mesh.userData.id);
         if (isNearbyStar && this.activeSystemId === 'solar') {
-          // Enter the star system
+          // Enter the star system or galaxy
           this.enterStarSystem(mesh.userData.id);
           this.audioEngine.playUIClick();
           return;
@@ -248,12 +271,21 @@ class App {
         allEntities
     );
 
+    // Update Debug info if available
+    if (this.uiManager.debugInfo && this.cameraRig) {
+      this.uiManager.debugInfo.innerText = `Cam Y: ${Math.round(this.cameraRig.camera.position.y)} | Look X: ${Math.round(this.cameraRig.targetLook.x)} Z: ${Math.round(this.cameraRig.targetLook.z)} | ZLevel: ${this.cameraRig.currentZoomLevel}`;
+    }
+
     // 7. Update Galaxy visibility based on zoom level
     const isStarSystemFocused = this.activeSystemId !== 'solar';
-    this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel, isStarSystemFocused);
+    this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel, isStarSystemFocused, this.activeSystemId);
     this.galaxy.update(time, delta, this.activePlanetId, this.ORBIT_MULTIPLIER, this.ROTATION_MULTIPLIER, this.MOON_MULTIPLIER);
 
-    // 8. Render
+    // 8. Update Superclusters
+    this.superclusters.updateVisibility(this.cameraRig.currentZoomLevel);
+    this.superclusters.update(time);
+
+    // 9. Render
     this.renderer.update(delta);
   }
 }

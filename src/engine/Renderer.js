@@ -9,10 +9,10 @@ export class Renderer {
     
     // Scene
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x020203, 0.0003); // reduced for galaxy visibility
+    this.scene.fog = new THREE.FogExp2(0x020203, 0.00000005); // Massively reduced for supercluster visibility
     
-    // Camera — far plane extended for galaxy scale
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
+    // Camera — far plane extended for massive supercluster scale
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 15000000);
     
     // Camera headlamp — strong enough to illuminate moons at distance
     this.cameraLight = new THREE.PointLight(0xffffff, 3.0, 600);

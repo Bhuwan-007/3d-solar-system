@@ -13,9 +13,9 @@ export class CelestialBody {
     this.id = config.id;
     this.name = config.name;
     this.radius = config.r;
-    this.dist = config.dist;
-    this.orbit = config.orbit;
-    this.rot = config.rot;
+    this.dist = config.dist || 0;
+    this.orbit = config.orbit || 0;
+    this.rot = config.rot || 0;
     this.maxMoonDist = config.maxMoonDist || 0;
     
     this.glslNoise = glslNoise;

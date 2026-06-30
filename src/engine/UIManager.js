@@ -10,6 +10,17 @@ export class UIManager {
     this.cursorRing = document.getElementById('cursor-ring');
     this.dashboard = document.getElementById('planet-dashboard');
     this.scrollContainer = document.getElementById('scroll-container');
+    this.dashboardContainer = document.getElementById('dashboard-container');
+    
+    // Debug info element
+    this.debugInfo = document.createElement('div');
+    this.debugInfo.style.position = 'fixed';
+    this.debugInfo.style.top = '10px';
+    this.debugInfo.style.left = '10px';
+    this.debugInfo.style.color = 'lime';
+    this.debugInfo.style.zIndex = '9999';
+    this.debugInfo.style.fontFamily = 'monospace';
+    document.body.appendChild(this.debugInfo);
     
     this.dX = window.innerWidth / 2;
     this.dY = window.innerHeight / 2;

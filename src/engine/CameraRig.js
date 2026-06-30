@@ -106,9 +106,10 @@ export class CameraRig {
         const zoomPos = new THREE.Vector3(zoomSection.cameraPos.x, zoomSection.cameraPos.y, zoomSection.cameraPos.z);
         const zoomLook = new THREE.Vector3(zoomSection.cameraLook.x, zoomSection.cameraLook.y, zoomSection.cameraLook.z);
         
-        // Add parallax to zoom positions too
-        zoomPos.x += this.mouseNormX * 50;
-        zoomPos.z += this.mouseNormY * 30;
+        // Add parallax dynamically based on view distance
+        const zoomDist = zoomPos.distanceTo(zoomLook);
+        zoomPos.x += this.mouseNormX * (zoomDist * 0.1);
+        zoomPos.z += this.mouseNormY * (zoomDist * 0.06);
         
         baseTargetPos = new THREE.Vector3().copy(planetPos).lerp(zoomPos, t);
         baseTargetLook = new THREE.Vector3().copy(planetLook).lerp(zoomLook, t);
@@ -127,11 +128,14 @@ export class CameraRig {
         const lookA = new THREE.Vector3(sA.cameraLook.x, sA.cameraLook.y, sA.cameraLook.z);
         const lookB = new THREE.Vector3(sB.cameraLook.x, sB.cameraLook.y, sB.cameraLook.z);
         
-        // Parallax at galaxy scale
-        posB.x += this.mouseNormX * 100;
-        posB.z += this.mouseNormY * 60;
-        posA.x += this.mouseNormX * 50;
-        posA.z += this.mouseNormY * 30;
+        // Parallax scales automatically with distance so it works at galaxy and supercluster scale!
+        const distB = posB.distanceTo(lookB);
+        posB.x += this.mouseNormX * (distB * 0.1);
+        posB.z += this.mouseNormY * (distB * 0.06);
+        
+        const distA = posA.distanceTo(lookA);
+        posA.x += this.mouseNormX * (distA * 0.1);
+        posA.z += this.mouseNormY * (distA * 0.06);
         
         baseTargetPos = new THREE.Vector3().copy(posA).lerp(posB, t);
         baseTargetLook = new THREE.Vector3().copy(lookA).lerp(lookB, t);
