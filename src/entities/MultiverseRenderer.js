@@ -29,9 +29,9 @@ export class MultiverseRenderer {
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 1.0, depthWrite: false, depthTest: false });
     const sprite = new THREE.Sprite(spriteMat);
 
-    sprite.scale.set(4000000, 500000, 1);
+    sprite.scale.set(600000, 75000, 1); 
     sprite.renderOrder = 999;
-    sprite.position.set(0, 1500000, 0); // Above our home bubble
+    sprite.position.set(0, 225000, 0); // Above our home bubble
 
     this.group.add(sprite);
   }
@@ -190,14 +190,14 @@ export class MultiverseRenderer {
       if (i === 0) {
         // Our Universe (Home Bubble)
         px = 0; py = 0; pz = 0;
-        radius = 1000000;
+        radius = 150000;
         color.setHex(0xaa44ff); // Our purple-ish tint
       } else {
         // Spread bubbles densely around the bulk
-        px = (Math.random() - 0.5) * 60000000;
-        py = (Math.random() - 0.5) * 60000000;
-        pz = (Math.random() - 0.5) * 60000000;
-        radius = 500000 + Math.random() * 1500000;
+        px = (Math.random() - 0.5) * 25000000;
+        py = (Math.random() - 0.5) * 25000000;
+        pz = (Math.random() - 0.5) * 25000000;
+        radius = 75000 + Math.random() * 225000;
 
         color.copy(colors[Math.floor(Math.random() * colors.length)]);
       }
@@ -250,7 +250,7 @@ export class MultiverseRenderer {
     innerGeo.setAttribute('color', new THREE.Float32BufferAttribute(allGalaxyColors, 3));
 
     const innerMat = new THREE.PointsMaterial({
-      size: 40000, // Size of tiny galaxies at this scale
+      size: 6000, // Size of tiny galaxies at this scale
       vertexColors: true,
       transparent: true,
       opacity: 0.8,
@@ -269,9 +269,9 @@ export class MultiverseRenderer {
     const positions = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 80000000;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 80000000;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 80000000;
+      positions[i * 3] = (Math.random() - 0.5) * 30000000;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 30000000;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 30000000;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -341,9 +341,9 @@ export class MultiverseRenderer {
           float noise = snoise(pos * 0.0000001 + time * 0.5);
           
           // Tendrils clump together dynamically
-          pos.x += snoise(pos.xyz * 0.0000002 + time * 0.1) * 200000.0;
-          pos.y += snoise(pos.yzx * 0.0000002 + time * 0.1) * 200000.0;
-          pos.z += snoise(pos.zxy * 0.0000002 + time * 0.1) * 200000.0;
+          pos.x += snoise(pos.xyz * 0.000004 + time * 0.1) * 30000.0;
+          pos.y += snoise(pos.yzx * 0.000004 + time * 0.1) * 30000.0;
+          pos.z += snoise(pos.zxy * 0.000004 + time * 0.1) * 30000.0;
           
           vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
           gl_Position = projectionMatrix * mvPos;
@@ -352,7 +352,7 @@ export class MultiverseRenderer {
           vAlpha = (noise + 1.0) * 0.5;
           vAlpha = pow(vAlpha, 3.0); // Sharpen the tendrils
           
-          gl_PointSize = (2000000.0 / -mvPos.z) * vAlpha;
+          gl_PointSize = (300000.0 / -mvPos.z) * vAlpha;
         }
       `,
       fragmentShader: `

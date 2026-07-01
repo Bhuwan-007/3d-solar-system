@@ -54,13 +54,23 @@ export const zoomOutSections = [
     cameraLook: { x: 200000, y: 0, z: 100000 },
   },
   {
+    id: 'multiverse-inner',
+    name: 'The Multiverse',
+    kicker: 'Approaching Home',
+    description: 'Diving deep into the cosmic foam. Countless distinct universes drift past us as we navigate the crackling dark energy toward our own home bubble.',
+    uiColor: 'magenta',
+    zoomLevel: 6,
+    cameraPos: { x: 1000000, y: 1500000, z: 1000000 },
+    cameraLook: { x: 0, y: 0, z: 0 },
+  },
+  {
     id: 'multiverse',
     name: 'The Multiverse',
     kicker: 'The Bulk',
     description: 'Our entire universe is but one of countless cosmic bubbles floating in a higher-dimensional void. Each bubble represents a complete universe with unique physical constants, pushed apart by crackling dark energy.',
     uiColor: 'magenta',
     zoomLevel: 6,
-    cameraPos: { x: 5000000, y: 15000000, z: 8000000 },
-    cameraLook: { x: 10000000, y: 0, z: 5000000 },
+    cameraPos: { x: 5000000, y: 9000000, z: 5000000 },
+    cameraLook: { x: 0, y: 0, z: 0 },
   }
 ];
