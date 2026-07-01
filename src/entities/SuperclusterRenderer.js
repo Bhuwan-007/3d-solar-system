@@ -108,7 +108,7 @@ export class SuperclusterRenderer {
   }
 
   createInstancedGalaxies() {
-    const totalGalaxies = 25000; // Increased for more density
+    const totalGalaxies = 30000; // Increased for more density and outer halo
     
     // A simple plane geometry for a galaxy sprite
     const geo = new THREE.PlaneGeometry(1, 1);
@@ -140,6 +140,7 @@ export class SuperclusterRenderer {
       side: THREE.DoubleSide
     });
 
+    // Create instances for 30,000 galaxies (25k inner, 5k outer halo)
     this.instancedMesh = new THREE.InstancedMesh(geo, mat, totalGalaxies);
     
     const dummy = new THREE.Object3D();
@@ -197,7 +198,7 @@ export class SuperclusterRenderer {
         const rc = randomClusters[Math.floor(Math.random() * randomClusters.length)];
         centerPos = rc.pos;
         radius = rc.radius * (0.1 + Math.pow(Math.random(), 2) * 0.9);
-      } else {
+      } else if (rand < 0.8) {
         // Intergalactic space - use spherical distribution as it creates a much better web
         centerPos = new THREE.Vector3(
           Math.random() > 0.8 ? 500000 : 0, // 20% bias towards positive X (right side)
@@ -205,6 +206,10 @@ export class SuperclusterRenderer {
           Math.random() > 0.8 ? 300000 : 0  // 20% bias towards positive Z (right side)
         );
         radius = 2500000 * Math.random();
+      } else {
+        // Massive Outer Halo to fill the void between superclusters and multiverse
+        centerPos = new THREE.Vector3(0,0,0);
+        radius = 2500000 + (12500000 * Math.random()); // Spans from 2.5m out to 15m
       }
 
       let px, py, pz;

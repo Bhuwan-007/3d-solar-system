@@ -221,16 +221,19 @@ export class MultiverseRenderer {
         const r = radius * 0.9 * Math.cbrt(Math.random()); // 0.9 to keep inside the rim
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos((Math.random() * 2) - 1);
-        
+
         const gx = px + r * Math.sin(phi) * Math.cos(theta);
         const gy = py + r * Math.cos(phi);
         const gz = pz + r * Math.sin(phi) * Math.sin(theta);
-        
+
         allGalaxyPositions.push(gx, gy, gz);
-        
+
         // Galaxies inherit the universe's physics constant (base color) but with some noise
-        const tint = new THREE.Color().copy(color);
-        tint.lerp(new THREE.Color(0xffffff), Math.random() * 0.5);
+        //const tint = new THREE.Color().copy(color);
+        //tint.lerp(new THREE.Color(0xffffff), Math.random() * 0.5);
+        // Galaxies get completely random colors instead of inheriting the universe tint
+        const tint = new THREE.Color();
+        tint.setHSL(Math.random(), 0.7 + Math.random() * 0.3, 0.5 + Math.random() * 0.5);
         allGalaxyColors.push(tint.r, tint.g, tint.b);
       }
     }
@@ -240,12 +243,12 @@ export class MultiverseRenderer {
 
     this.foamMesh.frustumCulled = false;
     this.group.add(this.foamMesh);
-    
+
     // Build the inner galaxies Points mesh
     const innerGeo = new THREE.BufferGeometry();
     innerGeo.setAttribute('position', new THREE.Float32BufferAttribute(allGalaxyPositions, 3));
     innerGeo.setAttribute('color', new THREE.Float32BufferAttribute(allGalaxyColors, 3));
-    
+
     const innerMat = new THREE.PointsMaterial({
       size: 40000, // Size of tiny galaxies at this scale
       vertexColors: true,
@@ -254,7 +257,7 @@ export class MultiverseRenderer {
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
-    
+
     const innerPoints = new THREE.Points(innerGeo, innerMat);
     innerPoints.frustumCulled = false;
     this.group.add(innerPoints);
