@@ -376,8 +376,7 @@ export class SuperclusterRenderer {
   }
 
   updateVisibility(zoomLevel) {
-    // Only visible at Supercluster scale
-    this.group.visible = zoomLevel >= 5;
+    this.group.visible = zoomLevel >= 5 && zoomLevel < 6;
   }
 
   update(time) {

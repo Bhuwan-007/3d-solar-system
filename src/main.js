@@ -16,6 +16,7 @@ import { nearbyStarsData } from './data/nearbyStars.js';
 import { localGroupData } from './data/localGroup.js';
 import { superclustersData } from './data/superclusters.js';
 import { SuperclusterRenderer } from './entities/SuperclusterRenderer.js';
+import { MultiverseRenderer } from './entities/MultiverseRenderer.js';
 
 class App {
   constructor() {
@@ -42,6 +43,7 @@ class App {
     );
     
     this.superclusters = new SuperclusterRenderer(this.renderer.scene);
+    this.multiverse = new MultiverseRenderer(this.renderer.scene);
 
     // Engine Managers — total sections = planets + zoom-out sections
     const totalSections = solarSystemData.length + zoomOutSections.length;
@@ -281,9 +283,12 @@ class App {
     this.galaxy.updateVisibility(this.cameraRig.currentZoomLevel, isStarSystemFocused, this.activeSystemId);
     this.galaxy.update(time, delta, this.activePlanetId, this.ORBIT_MULTIPLIER, this.ROTATION_MULTIPLIER, this.MOON_MULTIPLIER);
 
-    // 8. Update Superclusters
+    // 8. Update Superclusters & Multiverse
     this.superclusters.updateVisibility(this.cameraRig.currentZoomLevel);
     this.superclusters.update(time);
+    
+    this.multiverse.updateVisibility(this.cameraRig.currentZoomLevel);
+    this.multiverse.update(time);
 
     // 9. Render
     this.renderer.update(delta);

@@ -11,8 +11,8 @@ export class Renderer {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x020203, 0.00000005); // Massively reduced for supercluster visibility
     
-    // Camera — far plane extended for massive supercluster scale
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 15000000);
+    // Camera — far plane extended for the multiverse
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000000000);
     
     // Camera headlamp — strong enough to illuminate moons at distance
     this.cameraLight = new THREE.PointLight(0xffffff, 3.0, 600);
@@ -25,8 +25,13 @@ export class Renderer {
     
     this.scene.add(this.camera); // camera must be in scene for child lights to work
     
-    // Renderer
-    this.webgl = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    // Renderer - logarithmic depth buffer is essential to prevent z-fighting across billions of units
+    this.webgl = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true, 
+      powerPreference: "high-performance",
+      logarithmicDepthBuffer: true
+    });
     this.webgl.setSize(window.innerWidth, window.innerHeight);
     this.webgl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.webgl.toneMapping = THREE.ACESFilmicToneMapping;

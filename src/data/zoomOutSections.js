@@ -52,5 +52,15 @@ export const zoomOutSections = [
     zoomLevel: 5,
     cameraPos: { x: 100000, y: 550000, z: 300000 },
     cameraLook: { x: 200000, y: 0, z: 100000 },
+  },
+  {
+    id: 'multiverse',
+    name: 'The Multiverse',
+    kicker: 'The Bulk',
+    description: 'Our entire universe is but one of countless cosmic bubbles floating in a higher-dimensional void. Each bubble represents a complete universe with unique physical constants, pushed apart by crackling dark energy.',
+    uiColor: 'magenta',
+    zoomLevel: 6,
+    cameraPos: { x: 5000000, y: 15000000, z: 8000000 },
+    cameraLook: { x: 10000000, y: 0, z: 5000000 },
   }
 ];
